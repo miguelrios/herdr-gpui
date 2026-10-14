@@ -224,7 +224,7 @@ fn image_catalog_changes_commit_with_their_surface_and_do_not_survive_reboot() {
     assert!(state.surface_images.get(&key).is_some());
     assert_eq!(
         state.surface.as_ref().unwrap().graphics.retained_assets,
-        [key.clone()]
+        std::slice::from_ref(&key)
     );
     assert!(Arc::ptr_eq(
         state.pending_surface_images.as_ref().unwrap(),
