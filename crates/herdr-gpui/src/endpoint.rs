@@ -103,6 +103,7 @@ impl Release {
             match result {
                 Ok(request) => {
                     state.activation = Some(super::state::SurfaceActivation {
+                        ack: Default::default(),
                         request: request.clone(),
                         boot: self.boot.clone(),
                         revision: None,

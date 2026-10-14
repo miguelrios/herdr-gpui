@@ -39,6 +39,7 @@ fn pending_navigation_defers_the_decision(cx: &mut gpui::TestAppContext) {
             let boot = view.live.snapshot.as_ref().unwrap().boot_id.clone();
             // The user just selected `w4`; the snapshot does not show it yet.
             view.live.activation = Some(crate::state::SurfaceActivation {
+                ack: Default::default(),
                 request: "focus".into(),
                 boot,
                 revision: None,

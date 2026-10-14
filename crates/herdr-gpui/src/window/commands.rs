@@ -98,17 +98,79 @@ impl HerdrWindow {
         if !self.input_ready() {
             return false;
         }
-        let queued =
+        let queued = self.focus_ack_navigation(&target).unwrap_or_else(|| {
             self.request_focus_change("Navigate", Some((&target).into()), |handle, boot| {
                 match target {
                     NavigationTarget::Workspace(id) => handle.focus_workspace(boot, id),
                     NavigationTarget::Tab(id) => handle.focus_tab(boot, id),
                     NavigationTarget::Pane(id) => handle.focus_pane(boot, id),
                 }
-            });
+            })
+        });
         self.discard_composition(cx);
         cx.notify();
         queued
+    }
+
+    /// Only a changed explicit focus has metadata proving a newer projection.
+    /// Same-target operations and popups still need a surface epoch barrier.
+    fn focus_ack_navigation(&mut self, target: &NavigationTarget<&str>) -> Option<bool> {
+        if !self.live.supports_surface || !self.input_ready() {
+            return None;
+        }
+        let endpoint = &self.endpoints[self.selected_endpoint];
+        let target = target.as_deref();
+        let handle = endpoint.connection.handle.as_ref()?.clone();
+        let inbox = endpoint.connection.inbox.clone();
+        let mut state = inbox.lock().ok()?;
+        if !state.surface_ready() || state.surface.as_ref()?.popup.is_some() {
+            return None;
+        }
+        let snapshot = state.snapshot.as_ref()?;
+        let current = match target {
+            NavigationTarget::Pane(_) => snapshot.focused_pane_id.as_deref(),
+            NavigationTarget::Tab(_) => snapshot.focused_tab_id.as_deref(),
+            NavigationTarget::Workspace(_) => snapshot.focused_workspace_id.as_deref(),
+        }?;
+        let destination = match target {
+            NavigationTarget::Pane(id)
+            | NavigationTarget::Tab(id)
+            | NavigationTarget::Workspace(id) => id,
+        };
+        if current == destination || snapshot.revision == u64::MAX {
+            return None;
+        }
+        let boot = snapshot.boot_id.clone();
+        let after_revision = snapshot.revision;
+        // Register while holding the authoritative inbox, so an immediate
+        // correlated response cannot arrive before the fence exists.
+        let request = match target {
+            NavigationTarget::Pane(id) => handle.focus_pane(&boot, id),
+            NavigationTarget::Tab(id) => handle.focus_tab(&boot, id),
+            NavigationTarget::Workspace(id) => handle.focus_workspace(&boot, id),
+        };
+        let request = match request {
+            Ok(request) => request,
+            Err(error) => {
+                self.local_error = Some(format!("Navigate: {error}"));
+                return Some(false);
+            }
+        };
+        state.activation = Some(state::SurfaceActivation {
+            request,
+            ack: state::ActivationAck::Focus { after_revision },
+            boot,
+            revision: None,
+            failed: false,
+            focus: Some((&target).into()),
+            active: true,
+        });
+        state.surface = None;
+        state.dirty = true;
+        self.live = state.clone();
+        let now = std::time::Instant::now();
+        self.activation_deadline = Some(now + Duration::from_secs(5));
+        Some(true)
     }
 
     /// `label` is what a failure is reported as, not a method name: navigation
@@ -159,6 +221,7 @@ impl HerdrWindow {
                 }
             };
             state.activation = Some(state::SurfaceActivation {
+                ack: Default::default(),
                 request,
                 boot: snapshot.boot_id.clone(),
                 revision: None,

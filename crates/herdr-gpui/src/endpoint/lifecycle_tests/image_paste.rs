@@ -15,6 +15,7 @@ fn text_paste_survives_a_settled_navigation(cx: &mut gpui::TestAppContext) {
         prefer_character_input: false,
     };
     let settled = |view: &HerdrWindow| crate::state::SurfaceActivation {
+        ack: Default::default(),
         request: "activate-1".into(),
         boot: view.live.snapshot.as_ref().unwrap().boot_id.clone(),
         revision: Some(view.live.surface.as_ref().unwrap().projection_revision),

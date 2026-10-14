@@ -36,6 +36,7 @@ fn previous_pane_follows_focus_within_one_boot() {
 
 fn activating(snapshot: &ClientShellSnapshot) -> SurfaceActivation {
     SurfaceActivation {
+        ack: Default::default(),
         request: "activate-1".into(),
         boot: snapshot.boot_id.clone(),
         revision: None,

@@ -161,12 +161,6 @@ fn connected_mouse_inactive_pane_receives_first_click_before_focus_fence(
     assert_eq!(request["method"], "pane.focus");
     assert_eq!(request["params"], serde_json::json!({"pane_id": "w1:p2"}));
     server.respond(&request);
-    let ClientMessage::ClientShellEndpointRequest { request, .. } = server.receive() else {
-        panic!("missing ordered surface fence");
-    };
-    let barrier: serde_json::Value = serde_json::from_str(&request).unwrap();
-    assert_eq!(barrier["method"], Method::ClientShellSurfaceSet.as_str());
-    assert_eq!(barrier["params"]["active"], true);
     // The FIFO sentinel catches text incorrectly sent to the previously focused pane.
     assert_eq!(
         server.receive(),

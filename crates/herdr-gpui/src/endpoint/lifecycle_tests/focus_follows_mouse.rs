@@ -49,11 +49,8 @@ fn focus_follows_mouse_uses_one_ordered_focus_fence(cx: &mut gpui::TestAppContex
     assert_eq!(request["method"], "pane.focus");
     assert_eq!(request["params"], serde_json::json!({"pane_id": "w1:p2"}));
     server.respond(&request);
-    let ClientMessage::ClientShellEndpointRequest { request, .. } = server.receive() else {
-        panic!("missing surface fence");
-    };
-    let request: serde_json::Value = serde_json::from_str(&request).unwrap();
-    assert_eq!(request["method"], Method::ClientShellSurfaceSet.as_str());
+    // No second API request delays the marker; the focus acknowledgement and
+    // coherent target projection now establish the fence.
     assert_eq!(
         server.receive(),
         ClientMessage::ClientShellFocus { focused: false }

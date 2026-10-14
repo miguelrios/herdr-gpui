@@ -243,6 +243,7 @@ fn retired_generation_cannot_publish_into_replacement() {
 fn release_waits_for_its_own_successful_inactive_acknowledgement() {
     let inbox = Arc::new(Mutex::new(LiveState::default()));
     inbox.lock().unwrap().activation = Some(crate::state::SurfaceActivation {
+        ack: Default::default(),
         request: "off".into(),
         boot: "boot".into(),
         revision: None,

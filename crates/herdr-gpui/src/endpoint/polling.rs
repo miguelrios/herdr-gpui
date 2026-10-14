@@ -161,6 +161,7 @@ impl HerdrWindow {
                 Ok(request) => {
                     state.surface = None;
                     state.activation = Some(crate::state::SurfaceActivation {
+                        ack: Default::default(),
                         request,
                         boot: snapshot.boot_id.clone(),
                         revision: None,

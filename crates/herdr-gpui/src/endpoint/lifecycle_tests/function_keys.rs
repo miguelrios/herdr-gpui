@@ -56,6 +56,7 @@ fn f20_window(
         view.update(cx, |view, cx| {
             prepare_mouse(view, endpoint, cx);
             view.live.activation = Some(crate::state::SurfaceActivation {
+                ack: Default::default(),
                 request: "activate-1".into(),
                 boot: view.live.snapshot.as_ref().unwrap().boot_id.clone(),
                 revision: Some(view.live.surface.as_ref().unwrap().projection_revision),

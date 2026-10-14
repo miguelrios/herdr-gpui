@@ -4,8 +4,11 @@ use herdr_client::{
 };
 use std::sync::Arc;
 
+mod activation;
 mod agent_recency;
 
+pub(crate) use activation::ActivationAck;
+pub use activation::SurfaceActivation;
 use agent_recency::AgentRecency;
 
 pub(crate) type DialogResponse = Result<serde_json::Value, Arc<crate::Error>>;
@@ -164,16 +167,6 @@ impl AnnouncementDismissal {
 pub struct RenameResult {
     pub request: String,
     pub result: Option<Result<(), Arc<crate::Error>>>,
-}
-
-#[derive(Clone)]
-pub struct SurfaceActivation {
-    pub request: String,
-    pub boot: String,
-    pub revision: Option<u64>,
-    pub failed: bool,
-    pub focus: Option<crate::OwnedNavigationTarget>,
-    pub active: bool,
 }
 
 impl Default for LiveState {
@@ -652,12 +645,7 @@ impl LiveState {
                 if let Some(activation) = &mut self.activation
                     && request_id == activation.request
                 {
-                    let result = &response["result"];
-                    activation.revision = (response.get("error").is_none_or(|e| e.is_null())
-                        && result["type"] == "client_shell_surface_set"
-                        && result["active"] == activation.active)
-                        .then(|| result["projection_revision"].as_u64())
-                        .flatten();
+                    activation.revision = activation.acknowledged_revision(&response);
                     activation.failed = activation.revision.is_none();
                     if activation.failed {
                         self.error = Some("Invalid surface activation acknowledgement".into());

@@ -23,6 +23,7 @@ mod endpoint_switch;
 mod focus_fences;
 mod focus_follows_mouse;
 mod focus_follows_mouse_render;
+mod focus_navigation_ack;
 mod function_keys;
 mod group_navigation_choices;
 mod group_page_move;
@@ -79,13 +80,25 @@ impl Server {
 
     fn respond(&mut self, request: &serde_json::Value) {
         let id = request["id"].as_str().unwrap();
+        let result = match request["method"].as_str() {
+            Some("pane.focus") => {
+                serde_json::json!({"type": "pane_info", "pane": {"pane_id": request["params"]["pane_id"]}})
+            }
+            Some("tab.focus") => {
+                serde_json::json!({"type": "tab_info", "tab": {"tab_id": request["params"]["tab_id"]}})
+            }
+            Some("workspace.focus") => {
+                serde_json::json!({"type": "workspace_info", "workspace": {"workspace_id": request["params"]["workspace_id"]}})
+            }
+            _ => serde_json::json!({}),
+        };
         write_message(
             &mut self.stream,
             &ServerMessage::ClientShellEndpointResponseChunk {
                 boot_id: snapshot().boot_id,
                 request_id: id.into(),
                 final_chunk: true,
-                data: serde_json::to_vec(&serde_json::json!({"id": id, "result": {}})).unwrap(),
+                data: serde_json::to_vec(&serde_json::json!({"id": id, "result": result})).unwrap(),
             },
             MAX_GRAPHICS_FRAME_SIZE,
         )

@@ -10,6 +10,7 @@ mod daemon_messages;
 mod focus_acks;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
 mod local_peer_warning;
+mod navigation_acks;
 mod requests;
 mod surfaces;
 mod version_mismatch;

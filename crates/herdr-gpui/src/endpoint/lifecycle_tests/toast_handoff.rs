@@ -44,11 +44,6 @@ fn newer_same_endpoint_navigation_cannot_replay_a_pending_toast(cx: &mut gpui::T
     assert_eq!(request["method"], "pane.focus");
     assert_eq!(request["params"]["pane_id"], "new-pane");
     server.respond(&request);
-    let ClientMessage::ClientShellEndpointRequest { request, .. } = server.receive() else {
-        panic!("missing newer navigation barrier");
-    };
-    let barrier: serde_json::Value = serde_json::from_str(&request).unwrap();
-    assert_eq!(barrier["method"], Method::ClientShellSurfaceSet.as_str());
     let mut next = snapshot();
     next.revision += 1;
     let mut pane = next.panes[0].clone();
@@ -56,14 +51,6 @@ fn newer_same_endpoint_navigation_cannot_replay_a_pending_toast(cx: &mut gpui::T
     next.panes[0].focused = false;
     next.panes.push(pane);
     next.focused_pane_id = Some("new-pane".into());
-    write_message(&mut server.stream, &ServerMessage::ClientShellEndpointResponseChunk {
-        boot_id: next.boot_id.clone(),
-        request_id: barrier["id"].as_str().unwrap().into(),
-        final_chunk: true,
-        data: serde_json::to_vec(&serde_json::json!({"id": barrier["id"], "result": {
-            "type": "client_shell_surface_set", "active": true, "projection_revision": next.revision
-        }})).unwrap(),
-    }, MAX_GRAPHICS_FRAME_SIZE).unwrap();
     wait_until(|| {
         inbox
             .lock()

@@ -119,13 +119,6 @@ fn rendered_hover_resumes_typing_in_the_hovered_pane(cx: &mut gpui::TestAppConte
     let request: serde_json::Value = serde_json::from_str(&request).unwrap();
     assert_eq!(request["method"], Method::PaneFocus.as_str());
     assert_eq!(request["params"], serde_json::json!({"pane_id": "w1:p2"}));
-    server.respond(&request);
-    let ClientMessage::ClientShellEndpointRequest { request, .. } = past_resizes(&mut server)
-    else {
-        panic!("missing ordered surface barrier");
-    };
-    let barrier: serde_json::Value = serde_json::from_str(&request).unwrap();
-    assert_eq!(barrier["method"], Method::ClientShellSurfaceSet.as_str());
     next.revision += 1;
     next.focused_pane_id = Some("w1:p2".into());
     for pane in &mut next.panes {
@@ -151,7 +144,7 @@ fn rendered_hover_resumes_typing_in_the_hovered_pane(cx: &mut gpui::TestAppConte
         assert!(!view.input_ready());
     });
     // The real response travels through the socket worker and its inbox.
-    let id = barrier["id"].as_str().unwrap();
+    let id = request["id"].as_str().unwrap();
     write_message(
         &mut server.stream,
         &ServerMessage::ClientShellEndpointResponseChunk {
@@ -159,8 +152,7 @@ fn rendered_hover_resumes_typing_in_the_hovered_pane(cx: &mut gpui::TestAppConte
             request_id: id.into(),
             final_chunk: true,
             data: serde_json::to_vec(&serde_json::json!({"id": id, "result": {
-                "type": "client_shell_surface_set", "active": true,
-                "projection_revision": next.revision,
+                "type": "pane_info", "pane": {"pane_id": "w1:p2"},
             }}))
             .unwrap(),
         },
