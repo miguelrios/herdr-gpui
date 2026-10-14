@@ -34,7 +34,10 @@ fn metadata_gaps_deliver_keys_wheel_and_click_without_waiting_for_surface(
             view.scroll_wheel(
                 &gpui::ScrollWheelEvent {
                     position,
-                    delta: gpui::ScrollDelta::Lines(point(0., 1.)),
+                    delta: gpui::ScrollDelta::Lines(point(
+                        0.,
+                        f32::from(crate::terminal::PLATFORM_NOTCH_LINES),
+                    )),
                     modifiers: Default::default(),
                     touch_phase: gpui::TouchPhase::Moved,
                 },
