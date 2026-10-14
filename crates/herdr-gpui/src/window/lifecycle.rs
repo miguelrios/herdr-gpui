@@ -62,6 +62,9 @@ impl HerdrWindow {
             match handle.resize(&snapshot.boot_id, self.options) {
                 Ok(()) => {
                     self.last_queued_options = Some(self.options);
+                    // A slow frame must wait another reassert interval, rather
+                    // than queueing a resize and focus claim on every UI tick.
+                    self.pending_resize = Some((self.options, now));
                     // The daemon sizes a tab for the client that last
                     // focused, selected or interacted with it. A resize
                     // alone does not claim it back from another client (a
