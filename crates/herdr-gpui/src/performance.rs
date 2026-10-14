@@ -21,10 +21,30 @@ pub(crate) struct Counts {
     pub decorations: usize,
     pub paint_errors: usize,
     pub metric_shapes: usize,
+    /// Layer submissions; a complete terminal redraw paints every `Layer::ALL`.
     pub paints: usize,
     pub sidebar_renders: usize,
 }
 impl Global for Counts {}
+
+fn verify_dense_terminal(counts: Counts, warm: bool) -> Result<()> {
+    let layers = crate::terminal_painter::Layer::ALL.len();
+    let redraws = counts.paints / layers;
+    if counts.paints == 0
+        || !counts.paints.is_multiple_of(layers)
+        || counts.shapes > 400
+        || counts.quads != 50 * redraws
+        || counts.decorations != 1921 * redraws
+        || counts.glyphs != 6981 * redraws
+        || counts.paint_errors != 0
+    {
+        bail!("terminal deterministic budget: {counts:?}");
+    }
+    if warm && (counts.shapes != 0 || counts.metric_shapes != 0) {
+        bail!("unchanged terminal reshaped: {counts:?}");
+    }
+    Ok(())
+}
 
 fn surface() -> PaneSurfaceFrame {
     let lines = [
@@ -216,17 +236,7 @@ pub fn start(handle: WindowHandle<HerdrWindow>, cx: &mut App) {
                         bail!("text was not painted: {counts:?}");
                     }
                     if !uncached {
-                        if frame > 20 && (counts.shapes != 0 || counts.metric_shapes != 0) {
-                            bail!("unchanged terminal reshaped: {counts:?}");
-                        }
-                        if counts.shapes > 400
-                            || counts.paints == 0
-                            || counts.quads != 50 * counts.paints
-                            || counts.decorations != 1921 * counts.paints
-                            || counts.glyphs != 6981 * counts.paints
-                        {
-                            bail!("terminal deterministic budget: {counts:?}");
-                        }
+                        verify_dense_terminal(counts, frame > 20)?;
                     }
                     if frame == 0 {
                         cold.push(elapsed);
@@ -350,7 +360,7 @@ pub fn start(handle: WindowHandle<HerdrWindow>, cx: &mut App) {
                     window.draw(cx).clear(cx);
                     let elapsed = start.elapsed().as_secs_f64() * 1000.;
                     let counts = *cx.global::<Counts>();
-                    if counts.paints != 1
+                    if counts.paints != crate::terminal_painter::Layer::ALL.len()
                         || counts.glyphs != 6981
                         || counts.paint_errors != 0
                         || (!uncached && counts.shapes != 0)
@@ -385,3 +395,6 @@ pub fn start(handle: WindowHandle<HerdrWindow>, cx: &mut App) {
     })
     .detach();
 }
+
+#[cfg(test)]
+mod tests;
