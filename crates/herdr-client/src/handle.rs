@@ -3,7 +3,7 @@
 //! Dropping the last handle stops the worker; queueing is never daemon ack.
 
 use crate::{
-    Error, Result, SendError,
+    Error, InputTarget, Result, SendError,
     clipboard::{ClipboardImageUpload, ImageLease, ImageSlot},
     event::ClientEvent,
     host_theme::HostTheme,
@@ -46,6 +46,9 @@ impl Drop for HandleInner {
 pub(crate) struct Command {
     pub(crate) boot_id: String,
     pub(crate) bytes: Vec<u8>,
+    /// Captured from the original semantic input message, never inferred from
+    /// diagnostics or a partially decoded inbound surface.
+    pub(crate) input_target: Option<InputTarget>,
     /// Set when this command is an API request awaiting a correlated response.
     pub(crate) request: Option<PendingRequest>,
     pub(crate) image: Option<ImageSlot>,
@@ -111,6 +114,7 @@ impl ClientHandle {
         self.queue(Command {
             boot_id: boot_id.into(),
             bytes: Vec::new(),
+            input_target: None,
             request: None,
             image: Some(ImageSlot {
                 receiver,
@@ -156,9 +160,17 @@ impl ClientHandle {
             return Err(Error::MissingBootId);
         }
         let bytes = encode_message(&message, MAX_FRAME_SIZE)?;
+        let input_target = match message {
+            ClientMessage::ClientShellPaneInput { pane_id, .. } => Some(InputTarget::Pane(pane_id)),
+            ClientMessage::ClientShellPopupInput { terminal_id, .. } => {
+                Some(InputTarget::Popup(terminal_id))
+            }
+            _ => None,
+        };
         self.queue(Command {
             boot_id: boot_id.into(),
             bytes,
+            input_target,
             request,
             image: None,
         })

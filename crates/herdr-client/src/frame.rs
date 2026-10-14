@@ -65,6 +65,23 @@ impl FrameReader {
         }
     }
 
+    /// Inspect only a complete bounded identity header in a partial raw surface.
+    /// The caller still owns target, FIFO, API, and readable-body barriers.
+    pub(crate) fn has_current_surface_prefix(
+        &self,
+        snapshot: &ClientShellSnapshot,
+        surface: &PaneSurfaceFrame,
+    ) -> bool {
+        self.started
+            .is_some_and(|started| started.elapsed() < TIMEOUT)
+            && self.target > 4
+            && self.bytes.len() < self.target
+            && self
+                .bytes
+                .get(4..)
+                .is_some_and(|payload| has_current_surface_prefix(payload, snapshot, surface))
+    }
+
     /// Drain a progressing frame before retrying a backpressured write. Stop at
     /// one complete frame, 1 MiB, or one poll interval, whichever comes first.
     /// An idle/interrupting read yields immediately, not 128 receive timeouts.

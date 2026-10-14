@@ -3,6 +3,7 @@ mod links;
 mod selection;
 pub(crate) mod splits;
 pub(crate) use accessibility::Transcript;
+pub(crate) use herdr_client::InputTarget;
 pub(crate) use links::{PaneLink, RowLink, RowTarget, link_at, pane_hyperlink_at, pane_link_at};
 pub(crate) use selection::{MAX_SELECTION_BYTES, Selection};
 
@@ -97,12 +98,6 @@ pub(crate) fn input_area(
             px(f32::from(popup.frame.height) * cell_height),
         ),
     )
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum InputTarget {
-    Pane(String),
-    Popup(String),
 }
 
 /// Pane context actions include the pane's chrome, but never a popup or the
